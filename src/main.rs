@@ -48,6 +48,29 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         config.host, config.port, config.max_batch_size, config.block_size
     );
 
+    let grpc_port: u16 = env::var("GAZE_GRPC_PORT")
+        .ok()
+        .and_then(|p| p.parse().ok())
+        .unwrap_or(50051);
+    let grpc_addr_str = format!("{}:{}", config.host, grpc_port);
+    match grpc_addr_str.parse::<std::net::SocketAddr>() {
+        Ok(grpc_addr) => {
+            info!(addr = %grpc_addr, "Starting gRPC Inference service");
+            tokio::spawn(async move {
+                if let Err(err) = gazellm::net::start_grpc_server(grpc_addr).await {
+                    error!(addr = %grpc_addr, error = %err, "gRPC server terminated with error");
+                }
+            });
+        }
+        Err(err) => {
+            error!(
+                addr = %grpc_addr_str,
+                error = %err,
+                "Failed to parse gRPC socket address"
+            );
+        }
+    }
+
     start_http_server(&config).await?;
 
     Ok(())

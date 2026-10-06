@@ -26,6 +26,10 @@ tower = { version = "0.4", features = ["util"] }
 name = "ffi_smoke_test"
 path = "tests/ffi_smoke_test.rs"
 
+[[test]]
+name = "grpc_streaming_test"
+path = "tests/grpc_streaming_test.rs"
+
 [build-dependencies]
 tonic-build = "0.11"
 

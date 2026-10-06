@@ -37,9 +37,7 @@ impl SseTokenPayload {
 /// let tokens = vec!["Hello".to_string(), " world".to_string()];
 /// let _sse_response = create_token_stream(iter(tokens));
 /// ```
-pub fn create_token_stream<S>(
-    stream: S,
-) -> Sse<impl Stream<Item = Result<Event, Infallible>>>
+pub fn create_token_stream<S>(stream: S) -> Sse<impl Stream<Item = Result<Event, Infallible>>>
 where
     S: Stream<Item = String> + Send + 'static,
 {
@@ -63,11 +61,7 @@ pub fn create_token_stream_with_keepalive<S>(
 where
     S: Stream<Item = String> + Send + 'static,
 {
-    create_token_stream(stream).keep_alive(
-        KeepAlive::new()
-            .interval(interval)
-            .text("keep-alive"),
-    )
+    create_token_stream(stream).keep_alive(KeepAlive::new().interval(interval).text("keep-alive"))
 }
 
 #[cfg(test)]

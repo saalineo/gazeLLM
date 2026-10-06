@@ -1,11 +1,15 @@
 //! Network server infrastructure (gRPC and HTTP REST frontend).
 
 pub mod grpc;
+pub mod grpc_stream;
 pub mod http;
 pub mod request_processor;
 pub mod sse;
 
 pub use grpc::EngineInferenceService;
+pub use grpc_stream::{
+    start_grpc_server, start_grpc_server_with_shutdown, ClientStream, InferenceServiceImpl,
+};
 pub use http::{
     create_router, start_http_server, HttpCompletionRequest, HttpCompletionResponse,
     HttpServerError,
@@ -22,6 +26,7 @@ pub struct NetworkServer;
 impl NetworkServer {
     /// Creates a new [`NetworkServer`] instance.
     #[must_use]
+    #[inline]
     pub const fn new() -> Self {
         Self
     }

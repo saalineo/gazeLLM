@@ -92,11 +92,7 @@ async fn handle_completion(Json(payload): Json<HttpCompletionRequest>) -> impl I
 async fn handle_streaming_completion_post(
     Json(payload): Json<HttpCompletionRequest>,
 ) -> impl IntoResponse {
-    let tokens = vec![
-        "Echo: ".to_string(),
-        payload.prompt,
-        " [DONE]".to_string(),
-    ];
+    let tokens = vec!["Echo: ".to_string(), payload.prompt, " [DONE]".to_string()];
     let stream = tokio_stream::iter(tokens);
     create_token_stream(stream)
 }
