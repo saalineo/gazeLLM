@@ -7,7 +7,7 @@ use std::time::Duration;
 use tokio_stream::{Stream, StreamExt};
 
 /// Structured payload for a single token SSE event.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
 pub struct SseTokenPayload {
     /// Generated token string.
     pub token: String,
@@ -37,7 +37,9 @@ impl SseTokenPayload {
 /// let tokens = vec!["Hello".to_string(), " world".to_string()];
 /// let _sse_response = create_token_stream(iter(tokens));
 /// ```
-pub fn create_token_stream<S>(stream: S) -> Sse<impl Stream<Item = Result<Event, Infallible>>>
+pub fn create_token_stream<S>(
+    stream: S,
+) -> Sse<impl Stream<Item = Result<Event, Infallible>> + use<S>>
 where
     S: Stream<Item = String> + Send + 'static,
 {
@@ -57,7 +59,7 @@ where
 pub fn create_token_stream_with_keepalive<S>(
     stream: S,
     interval: Duration,
-) -> Sse<impl Stream<Item = Result<Event, Infallible>>>
+) -> Sse<impl Stream<Item = Result<Event, Infallible>> + use<S>>
 where
     S: Stream<Item = String> + Send + 'static,
 {

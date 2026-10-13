@@ -1,5 +1,5 @@
-use gazellm::net::grpc::gaze_v1::inference_service_client::InferenceServiceClient;
 use gazellm::net::grpc::GenerateRequest;
+use gazellm::net::grpc::gaze_v1::inference_service_client::InferenceServiceClient;
 use gazellm::net::grpc_stream::start_grpc_server_with_shutdown;
 use tokio_stream::StreamExt;
 

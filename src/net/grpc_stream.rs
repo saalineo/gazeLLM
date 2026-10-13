@@ -1,6 +1,5 @@
 //! gRPC bidirectional streaming implementation for token delivery.
 
-use std::fmt::Write;
 use std::net::SocketAddr;
 use tokio::sync::mpsc;
 use tokio_stream::wrappers::ReceiverStream;
@@ -89,7 +88,7 @@ impl InferenceServiceImpl {
     ///
     /// let response = InferenceServiceImpl::stream_generate_with_request(request).await?;
     /// let mut stream = response.into_inner();
-    /// let first = stream.next().await.unwrap()?;
+    /// let first = stream.next().await.ok_or("missing stream item")??;
     /// assert_eq!(first.request_id, "req_demo");
     /// # Ok(())
     /// # }
@@ -166,9 +165,7 @@ impl InferenceServiceImpl {
             for i in 0..total {
                 let is_finished = i + 1 == total;
                 let token_id = i32::try_from(i).unwrap_or(0);
-
-                let mut token_text = String::with_capacity(16);
-                let _ = write!(token_text, "token_{i} ");
+                let token_text = format!("token_{i} ");
 
                 let resp = GenerateResponse {
                     request_id: request_id.clone(),

@@ -20,8 +20,9 @@ fn test_rust_to_mojo_ffi_smoke() {
     };
 
     // SAFETY: Buffers are allocated with correct size and alignment.
-    let kernel_result =
-        unsafe { gazellm::ffi::bridge::mojo_execute_kernel(&in_tensor, &mut out_tensor) };
+    let kernel_result = unsafe {
+        gazellm::ffi::bridge::mojo_execute_kernel(&raw const in_tensor, &raw mut out_tensor)
+    };
     assert_eq!(kernel_result.status_code, 0);
 }
 

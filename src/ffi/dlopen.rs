@@ -1,6 +1,6 @@
 //! Dynamic library loader for runtime hot-swapping of Mojo compute kernels.
 
-use crate::ffi::bridge::{parse_ffi_result, FfiBridgeError};
+use crate::ffi::bridge::{FfiBridgeError, parse_ffi_result};
 use crate::ffi::types::{FfiResult, MojoTensorBuffer};
 use libloading::{Library, Symbol};
 use std::path::Path;
@@ -92,8 +92,8 @@ impl MojoLibrary {
         input: &MojoTensorBuffer,
         output: &mut MojoTensorBuffer,
     ) -> Result<(), FfiBridgeError> {
-        // SAFETY: We pass valid references converted to pointers that satisfy Mojo C-ABI layout.
-        let kernel_result = unsafe { (self.execute_kernel)(input, output) };
+        // SAFETY: We pass valid references converted via raw reference operators that satisfy Mojo C-ABI layout.
+        let kernel_result = unsafe { (self.execute_kernel)(&raw const *input, &raw mut *output) };
         parse_ffi_result(kernel_result)
     }
 }

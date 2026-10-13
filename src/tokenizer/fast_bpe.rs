@@ -28,6 +28,12 @@ pub enum TokenizerError {
     Decode(String),
 }
 
+impl From<tokenizers::Error> for TokenizerError {
+    fn from(err: tokenizers::Error) -> Self {
+        Self::Parse(err.to_string())
+    }
+}
+
 /// High-performance thread-safe wrapper around `HuggingFace` [`Tokenizer`].
 #[derive(Debug, Clone)]
 pub struct FastTokenizer {
@@ -128,11 +134,7 @@ impl FastTokenizer {
     /// # Errors
     /// Returns [`TokenizerError::Decode`] if decoding fails.
     pub fn decode_batch(&self, sequences: &[&[u32]]) -> Result<Vec<String>, TokenizerError> {
-        let mut results = Vec::with_capacity(sequences.len());
-        for seq in sequences {
-            results.push(self.decode(seq)?);
-        }
-        Ok(results)
+        sequences.iter().map(|seq| self.decode(seq)).collect()
     }
 
     /// Returns the total vocabulary size of the tokenizer.

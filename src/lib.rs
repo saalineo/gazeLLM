@@ -14,6 +14,13 @@ pub mod scheduler;
 pub mod tokenizer;
 pub mod weights;
 
+// Re-exported dependencies whose types appear in public APIs (Item 24).
+pub use axum;
+pub use libloading;
+pub use prost;
+pub use tokenizers;
+pub use tonic;
+
 /// Returns the engine version string.
 #[must_use]
 pub const fn engine_version() -> &'static str {

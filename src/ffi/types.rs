@@ -1,6 +1,6 @@
 //! Shared C ABI FFI type definitions for Rust and Mojo compute execution.
 
-use std::ffi::{c_char, CStr};
+use std::ffi::{CStr, c_char};
 use std::fmt;
 use std::str::FromStr;
 
@@ -17,10 +17,11 @@ pub mod dtype {
 }
 
 /// Strongly-typed enumeration of tensor data types.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 #[repr(i32)]
 pub enum DType {
     /// 32-bit floating point.
+    #[default]
     Fp32 = dtype::FP32,
     /// 16-bit floating point.
     Fp16 = dtype::FP16,
@@ -63,6 +64,7 @@ impl From<DType> for i32 {
 
 /// Error type when converting an invalid integer into a [`DType`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)]
+#[repr(transparent)]
 #[error("unknown dtype code: {0}")]
 pub struct InvalidDTypeError(pub i32);
 
@@ -83,6 +85,7 @@ impl TryFrom<i32> for DType {
 
 /// Error type when parsing a [`DType`] from a string.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
+#[repr(transparent)]
 #[error("unknown dtype string '{0}', expected 'fp32', 'fp16', 'bf16', or 'int8'")]
 pub struct ParseDTypeError(pub String);
 
@@ -102,7 +105,7 @@ impl FromStr for DType {
 
 /// C-compatible representation of a Mojo tensor memory buffer.
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct MojoTensorBuffer {
     /// Pointer to the contiguous raw memory buffer.
     pub data_ptr: *mut std::ffi::c_void,
@@ -112,6 +115,17 @@ pub struct MojoTensorBuffer {
     pub element_size_bytes: usize,
     /// Data type identifier (matching [`DType`] or [`dtype`]).
     pub dtype: i32,
+}
+
+impl Default for MojoTensorBuffer {
+    fn default() -> Self {
+        Self {
+            data_ptr: std::ptr::null_mut(),
+            num_elements: 0,
+            element_size_bytes: 0,
+            dtype: 0,
+        }
+    }
 }
 
 impl MojoTensorBuffer {
@@ -158,7 +172,7 @@ impl MojoTensorBuffer {
 
 /// C-compatible representation of a block table for `PagedAttention` memory management.
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct MojoBlockTable {
     /// Pointer to the block indices array.
     pub block_table_ptr: *mut i32,
@@ -166,6 +180,16 @@ pub struct MojoBlockTable {
     pub num_blocks: usize,
     /// Token capacity per block.
     pub block_size: usize,
+}
+
+impl Default for MojoBlockTable {
+    fn default() -> Self {
+        Self {
+            block_table_ptr: std::ptr::null_mut(),
+            num_blocks: 0,
+            block_size: 0,
+        }
+    }
 }
 
 impl MojoBlockTable {
@@ -197,12 +221,18 @@ impl MojoBlockTable {
 
 /// C-compatible status result returned from Mojo FFI kernel invocations.
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct FfiResult {
     /// Exit status code (0 for success, non-zero for error).
     pub status_code: i32,
     /// Pointer to null-terminated C string if an error occurred, or null on success.
     pub error_message: *const c_char,
+}
+
+impl Default for FfiResult {
+    fn default() -> Self {
+        Self::ok()
+    }
 }
 
 impl FfiResult {
@@ -352,5 +382,24 @@ mod tests {
         assert_eq!(format!("{}", DType::Fp32), "fp32");
         assert_eq!("bf16".parse::<DType>(), Ok(DType::Bf16));
         assert!("invalid".parse::<DType>().is_err());
+    }
+
+    #[test]
+    fn test_type_defaults_and_equality() {
+        assert_eq!(DType::default(), DType::Fp32);
+
+        let default_tensor = MojoTensorBuffer::default();
+        assert!(default_tensor.is_null());
+        assert_eq!(default_tensor.num_elements, 0);
+        assert_eq!(default_tensor, MojoTensorBuffer::default());
+
+        let default_table = MojoBlockTable::default();
+        assert!(default_table.is_null());
+        assert_eq!(default_table.num_blocks, 0);
+        assert_eq!(default_table, MojoBlockTable::default());
+
+        let default_res = FfiResult::default();
+        assert!(default_res.is_ok());
+        assert_eq!(default_res, FfiResult::ok());
     }
 }

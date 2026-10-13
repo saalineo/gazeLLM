@@ -2,11 +2,11 @@
 
 use crate::config::EngineConfig;
 use axum::{
+    Router,
     extract::Json,
     http::StatusCode,
     response::IntoResponse,
     routing::{get, post},
-    Router,
 };
 use serde::{Deserialize, Serialize};
 use std::net::SocketAddr;
@@ -51,12 +51,21 @@ pub struct HttpCompletionRequest {
     pub max_tokens: usize,
 }
 
+impl Default for HttpCompletionRequest {
+    fn default() -> Self {
+        Self {
+            prompt: String::new(),
+            max_tokens: default_max_tokens(),
+        }
+    }
+}
+
 const fn default_max_tokens() -> usize {
     128
 }
 
 /// Completion response payload for the HTTP API.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
 pub struct HttpCompletionResponse {
     /// Generated output text.
     pub text: String,

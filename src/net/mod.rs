@@ -6,18 +6,21 @@ pub mod http;
 pub mod request_processor;
 pub mod sse;
 
+pub use axum;
 pub use grpc::EngineInferenceService;
 pub use grpc_stream::{
-    start_grpc_server, start_grpc_server_with_shutdown, ClientStream, InferenceServiceImpl,
+    ClientStream, InferenceServiceImpl, start_grpc_server, start_grpc_server_with_shutdown,
 };
 pub use http::{
-    create_router, start_http_server, HttpCompletionRequest, HttpCompletionResponse,
-    HttpServerError,
+    HttpCompletionRequest, HttpCompletionResponse, HttpServerError, create_router,
+    start_http_server,
 };
+pub use prost;
 pub use request_processor::{
-    validate_request, InferenceRequest, InferenceRequestBuilder, RequestValidationError,
+    InferenceRequest, InferenceRequestBuilder, RequestValidationError, validate_request,
 };
-pub use sse::{create_token_stream, create_token_stream_with_keepalive, SseTokenPayload};
+pub use sse::{SseTokenPayload, create_token_stream, create_token_stream_with_keepalive};
+pub use tonic;
 
 /// Network frontend server stub.
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]

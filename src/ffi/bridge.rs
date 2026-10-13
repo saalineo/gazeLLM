@@ -1,7 +1,6 @@
 //! Safe Rust wrapper and C-ABI bridge for Mojo kernel execution.
 
 use crate::ffi::types::{FfiResult, MojoTensorBuffer};
-use std::ffi::CStr;
 
 /// Errors arising from FFI bridge execution.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
@@ -33,21 +32,21 @@ pub fn parse_ffi_result(result: FfiResult) -> Result<(), FfiBridgeError> {
         return Ok(());
     }
 
-    if result.error_message.is_null() {
-        Err(FfiBridgeError::Unknown {
+    // SAFETY: If non-null, `result.error_message` is checked to point to a valid null-terminated C string.
+    let message = unsafe { result.message_cstr() }.map(|cstr| cstr.to_string_lossy().into_owned());
+
+    Err(message.map_or(
+        FfiBridgeError::Unknown {
             status_code: result.status_code,
-        })
-    } else {
-        // SAFETY: `result.error_message` is checked to be non-null and is assumed to point to a valid null-terminated C string.
-        let msg = unsafe { CStr::from_ptr(result.error_message) };
-        Err(FfiBridgeError::KernelFailed {
+        },
+        |message| FfiBridgeError::KernelFailed {
             status_code: result.status_code,
-            message: msg.to_string_lossy().into_owned(),
-        })
-    }
+            message,
+        },
+    ))
 }
 
-extern "C" {
+unsafe extern "C" {
     /// Raw C-ABI symbol for executing a Mojo compute kernel.
     ///
     /// # Safety
@@ -69,8 +68,8 @@ pub fn safe_mojo_execute(
     input: &MojoTensorBuffer,
     output: &mut MojoTensorBuffer,
 ) -> Result<(), FfiBridgeError> {
-    // SAFETY: We pass valid references converted to pointers that satisfy Mojo C-ABI layout.
-    let kernel_result = unsafe { mojo_execute_kernel(input, output) };
+    // SAFETY: We pass valid references converted via raw reference operators that satisfy Mojo C-ABI layout.
+    let kernel_result = unsafe { mojo_execute_kernel(&raw const *input, &raw mut *output) };
     parse_ffi_result(kernel_result)
 }
 
@@ -85,26 +84,29 @@ mod tests {
         static MOCK_ERROR_MSG: RefCell<Option<CString>> = const { RefCell::new(None) };
     }
 
-    #[no_mangle]
+    #[unsafe(no_mangle)]
     pub extern "C" fn mojo_execute_kernel(
         input: *const MojoTensorBuffer,
         output: *mut MojoTensorBuffer,
     ) -> FfiResult {
-        if input.is_null() || output.is_null() {
-            return FfiResult::err(1, c"Null buffer pointer".as_ptr());
-        }
+        let result = std::panic::catch_unwind(|| {
+            if input.is_null() || output.is_null() {
+                return FfiResult::err(1, c"Null buffer pointer".as_ptr());
+            }
 
-        let status = MOCK_STATUS.with(Cell::get);
-        if status == 0 {
-            FfiResult::ok()
-        } else {
-            let msg_ptr = MOCK_ERROR_MSG.with(|m| {
-                m.borrow()
-                    .as_ref()
-                    .map_or(std::ptr::null(), |cstr| cstr.as_ptr())
-            });
-            FfiResult::err(status, msg_ptr)
-        }
+            let status = MOCK_STATUS.with(Cell::get);
+            if status == 0 {
+                FfiResult::ok()
+            } else {
+                let msg_ptr = MOCK_ERROR_MSG.with(|m| {
+                    m.borrow()
+                        .as_ref()
+                        .map_or(std::ptr::null(), |cstr| cstr.as_ptr())
+                });
+                FfiResult::err(status, msg_ptr)
+            }
+        });
+        result.unwrap_or_else(|_| FfiResult::err(-1, c"Panic caught at FFI boundary".as_ptr()))
     }
 
     fn set_mock_behavior(status: i32, msg: Option<&str>) {

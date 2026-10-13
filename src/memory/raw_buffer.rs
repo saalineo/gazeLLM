@@ -1,7 +1,7 @@
 //! Raw memory buffer allocation and lifecycle management.
 
 use crate::ffi::types::MojoTensorBuffer;
-use std::alloc::{alloc, alloc_zeroed, dealloc, Layout, LayoutError};
+use std::alloc::{Layout, LayoutError, alloc, alloc_zeroed, dealloc};
 use std::fmt;
 use std::ptr::NonNull;
 
@@ -169,6 +169,20 @@ impl RawMemoryBuffer {
         ))
     }
 
+    /// Constructs a [`MojoTensorBuffer`] descriptor pointing into this buffer using a strongly typed [`DType`].
+    ///
+    /// # Errors
+    /// Returns [`AllocationError::BufferOverflow`] if `num_elements * element_size_bytes` exceeds
+    /// the buffer size.
+    pub const fn as_mojo_tensor_with_dtype(
+        &mut self,
+        num_elements: usize,
+        element_size_bytes: usize,
+        dtype: crate::ffi::types::DType,
+    ) -> Result<MojoTensorBuffer, AllocationError> {
+        self.as_mojo_tensor(num_elements, element_size_bytes, dtype as i32)
+    }
+
     /// Returns an immutable slice view of the buffer memory.
     ///
     /// # Safety
@@ -241,7 +255,7 @@ mod tests {
         assert!(!buffer.is_empty());
         let ptr = buffer.as_mut_ptr();
         assert!(!ptr.is_null());
-        assert_eq!((ptr as usize) % align, 0, "pointer must be 64-byte aligned");
+        assert_eq!(ptr.addr() % align, 0, "pointer must be 64-byte aligned");
 
         // SAFETY: Testing raw pointer writes to allocated memory.
         unsafe {
@@ -295,6 +309,15 @@ mod tests {
             overflow_err,
             AllocationError::BufferOverflow { .. }
         ));
+
+        let typed_tensor = buf
+            .as_mojo_tensor_with_dtype(128, 4, crate::ffi::types::DType::Fp32)
+            .expect("typed tensor conversion");
+        assert_eq!(typed_tensor.dtype, 0);
+        assert_eq!(
+            typed_tensor.dtype_enum(),
+            Ok(crate::ffi::types::DType::Fp32)
+        );
     }
 
     #[test]
@@ -329,7 +352,7 @@ mod tests {
 
         let ptr = buffer.as_mut_ptr();
         assert_eq!(
-            (ptr as usize) % ALIGN_64,
+            ptr.addr() % ALIGN_64,
             0,
             "buffer pointer must satisfy 64-byte alignment"
         );
@@ -349,10 +372,10 @@ mod tests {
     #[test]
     fn test_thread_send() {
         let buffer = RawMemoryBuffer::allocate(512, 16).unwrap();
-        let expected_addr = buffer.as_ptr() as usize;
+        let expected_addr = buffer.as_ptr().addr();
 
         let handle = thread::spawn(move || {
-            assert_eq!(buffer.as_ptr() as usize, expected_addr);
+            assert_eq!(buffer.as_ptr().addr(), expected_addr);
             buffer.size()
         });
 

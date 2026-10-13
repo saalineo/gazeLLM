@@ -156,6 +156,55 @@ impl EngineConfig {
         }
         Ok(())
     }
+
+    /// Returns the host IP address.
+    #[must_use]
+    #[inline]
+    pub fn host(&self) -> &str {
+        &self.host
+    }
+
+    /// Returns the port number.
+    #[must_use]
+    #[inline]
+    pub const fn port(&self) -> u16 {
+        self.port
+    }
+
+    /// Returns the maximum batch size.
+    #[must_use]
+    #[inline]
+    pub const fn max_batch_size(&self) -> usize {
+        self.max_batch_size
+    }
+
+    /// Returns the block size (tokens per block).
+    #[must_use]
+    #[inline]
+    pub const fn block_size(&self) -> usize {
+        self.block_size
+    }
+
+    /// Returns the maximum number of blocks allocated in host RAM.
+    #[must_use]
+    #[inline]
+    pub const fn max_num_blocks(&self) -> usize {
+        self.max_num_blocks
+    }
+
+    /// Returns the number of blocks allocated in GPU VRAM.
+    #[must_use]
+    #[inline]
+    pub const fn num_gpu_blocks(&self) -> usize {
+        self.num_gpu_blocks
+    }
+
+    /// Returns the Mojo shared library file path.
+    #[must_use]
+    #[inline]
+    pub fn mojo_library_path(&self) -> &str {
+        &self.mojo_library_path
+    }
 }
 
 /// Builder for [`EngineConfig`].
@@ -165,6 +214,12 @@ pub struct EngineConfigBuilder {
 }
 
 impl EngineConfigBuilder {
+    /// Creates a new [`EngineConfigBuilder`] initialized with default engine settings.
+    #[must_use]
+    pub fn new() -> Self {
+        Self::default()
+    }
+
     /// Sets the host IP address.
     #[must_use]
     pub fn host(mut self, host: impl Into<String>) -> Self {
@@ -260,12 +315,22 @@ mod tests {
             .expect("valid builder configuration");
 
         assert_eq!(config.host, "0.0.0.0");
+        assert_eq!(config.host(), "0.0.0.0");
         assert_eq!(config.port, 9090);
+        assert_eq!(config.port(), 9090);
         assert_eq!(config.max_batch_size, 64);
+        assert_eq!(config.max_batch_size(), 64);
         assert_eq!(config.block_size, 32);
+        assert_eq!(config.block_size(), 32);
         assert_eq!(config.max_num_blocks, 2048);
+        assert_eq!(config.max_num_blocks(), 2048);
         assert_eq!(config.num_gpu_blocks, 1024);
+        assert_eq!(config.num_gpu_blocks(), 1024);
         assert_eq!(config.mojo_library_path, "target/libmojo_kernel.so");
+        assert_eq!(config.mojo_library_path(), "target/libmojo_kernel.so");
+
+        let default_via_builder = EngineConfigBuilder::new().build().expect("default valid");
+        assert_eq!(default_via_builder, EngineConfig::default());
     }
 
     #[test]
@@ -342,9 +407,10 @@ mod tests {
         assert!(load_result.is_err());
         let err = load_result.unwrap_err();
         assert!(matches!(err, ConfigError::Io { .. }));
-        assert!(err
-            .to_string()
-            .contains("failed to read configuration file"));
+        assert!(
+            err.to_string()
+                .contains("failed to read configuration file")
+        );
     }
 
     #[test]
@@ -359,9 +425,10 @@ mod tests {
         assert!(load_result.is_err());
         let err = load_result.unwrap_err();
         assert!(matches!(err, ConfigError::Json { .. }));
-        assert!(err
-            .to_string()
-            .contains("failed to parse JSON configuration"));
+        assert!(
+            err.to_string()
+                .contains("failed to parse JSON configuration")
+        );
         let _ = fs::remove_file(file_path);
     }
 }

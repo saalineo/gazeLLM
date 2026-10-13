@@ -2,17 +2,17 @@ use gazellm::config::EngineConfig;
 use gazellm::engine_version;
 use gazellm::net::start_http_server;
 use std::env;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::process;
 use tracing::{error, info};
 
 fn parse_config_path() -> PathBuf {
     let mut args = env::args().skip(1);
     while let Some(arg) = args.next() {
-        if arg == "--config" {
-            if let Some(val) = args.next() {
-                return PathBuf::from(val);
-            }
+        if arg == "--config"
+            && let Some(val) = args.next()
+        {
+            return PathBuf::from(val);
         }
     }
     PathBuf::from("config/engine_config.json")
@@ -26,22 +26,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let config_path = parse_config_path();
     info!("Loading configuration from '{}'", config_path.display());
 
-    let config = match EngineConfig::load_from_file(&config_path) {
-        Ok(loaded_config) => loaded_config,
-        Err(err) => {
-            if !Path::new(&config_path).exists() {
-                info!("Config file not found, using default engine configuration");
-                EngineConfig::default()
-            } else {
-                error!(
-                    "Failed to load configuration from '{}': {}",
-                    config_path.display(),
-                    err
-                );
-                process::exit(1);
-            }
+    let config = EngineConfig::load_from_file(&config_path).unwrap_or_else(|err| {
+        if !config_path.exists() {
+            info!("Config file not found, using default engine configuration");
+            EngineConfig::default()
+        } else {
+            error!(
+                "Failed to load configuration from '{}': {err}",
+                config_path.display(),
+            );
+            process::exit(1);
         }
-    };
+    });
 
     info!(
         "Engine configured: host={}:{}, max_batch_size={}, block_size={}",

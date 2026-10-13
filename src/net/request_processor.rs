@@ -50,6 +50,18 @@ impl fmt::Display for InferenceRequest {
     }
 }
 
+impl Default for InferenceRequest {
+    fn default() -> Self {
+        Self {
+            id: String::new(),
+            prompt: String::new(),
+            max_tokens: 128,
+            temperature: 0.7,
+            top_p: 0.9,
+        }
+    }
+}
+
 impl InferenceRequest {
     /// Constructs a new [`InferenceRequest`] with default temperature (0.7) and `top_p` (0.9).
     #[must_use]
@@ -105,6 +117,12 @@ pub struct InferenceRequestBuilder {
 }
 
 impl InferenceRequestBuilder {
+    /// Creates a new [`InferenceRequestBuilder`].
+    #[must_use]
+    pub fn new() -> Self {
+        Self::default()
+    }
+
     /// Sets the request ID.
     #[must_use]
     pub fn id(mut self, id: impl Into<String>) -> Self {
@@ -151,6 +169,19 @@ impl InferenceRequestBuilder {
             top_p: self.top_p.unwrap_or(0.9),
         }
     }
+
+    /// Builds and validates the [`InferenceRequest`] against the engine sequence limit.
+    ///
+    /// # Errors
+    /// Returns [`RequestValidationError`] if validation constraints are violated.
+    pub fn build_and_validate(
+        self,
+        max_seq_len: usize,
+    ) -> Result<InferenceRequest, RequestValidationError> {
+        let request = self.build();
+        request.validate(max_seq_len)?;
+        Ok(request)
+    }
 }
 
 /// Convenience standalone function to validate an [`InferenceRequest`].
@@ -193,6 +224,18 @@ mod tests {
         assert_eq!(req.max_tokens, 256);
         assert!((req.temperature - 0.5).abs() < f32::EPSILON);
         assert!((req.top_p - 0.95).abs() < f32::EPSILON);
+
+        let validated_req = InferenceRequestBuilder::new()
+            .id("req-valid")
+            .prompt("Valid prompt")
+            .max_tokens(100)
+            .build_and_validate(2048)
+            .expect("validation succeeds");
+        assert_eq!(validated_req.id, "req-valid");
+
+        let default_req = InferenceRequest::default();
+        assert_eq!(default_req.max_tokens, 128);
+        assert!((default_req.temperature - 0.7).abs() < f32::EPSILON);
     }
 
     #[test]
